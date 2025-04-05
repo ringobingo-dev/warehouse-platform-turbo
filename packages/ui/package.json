@@ -1,0 +1,33 @@
+{
+  "name": "ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "packageManager": "pnpm@9.0.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./store": "./src/store/useStore.ts",
+    "./hooks": "./src/hooks/useFetch.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^18.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "eslint": "^9.23.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "swr": "^2.3.0",
+    "zustand": "latest"
+  }
+}

@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String                   @id @default(uuid())
+  email                  String                   @unique
+  name                   String?
+  rooms                  Room[]
+  customerColorPreferences CustomerColorPreference[]
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Room {
+  id            String      @id @default(uuid())
+  userId        String      @map("user_id")
+  user          User        @relation(fields: [userId], references: [id])
+  roomName      String      @map("room_name")
+  roomCategory  String      @map("room_category")
+  roomType      String      @map("room_type")
+  roomShape     String      @map("room_shape")
+  length        Float
+  width         Float
+  rowsCount     Int         @map("rows_count")
+  columnsCount  Int         @map("columns_count")
+  levels        Int
+  boxes         Box[]
+  logs          Log[]
+  snapshots     Snapshot[]
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  @@map("rooms")
+}
+
+model Box {
+  id           String   @id @default(uuid())
+  roomId       String   @map("room_id")
+  room         Room     @relation(fields: [roomId], references: [id])
+  row          Int
+  column       Int
+  level        Int
+  customerName String   @map("customer_name")
+  varietyName  String   @map("variety_name")
+  grade        String
+  loadingDate  DateTime @map("loading_date")
+  color        String
+  size         String
+  logIndex     Int      @map("log_index")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([roomId, row, column, level])
+  @@map("boxes")
+}
+
+model Log {
+  id               String   @id @default(uuid())
+  roomId           String   @map("room_id")
+  room             Room     @relation(fields: [roomId], references: [id])
+  customerName     String   @map("customer_name")
+  boxCount         Int      @map("box_count")
+  varietyName      String   @map("variety_name")
+  grade            String
+  loadingDate      DateTime @map("loading_date")
+  locations        Json
+  boxSize          String   @map("box_size")
+  startingRow      Int      @map("starting_row")
+  stackHeight      Int      @map("stack_height")
+  customerBoxColor String   @map("customer_box_color")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("logs")
+}
+
+model Snapshot {
+  id        String   @id @default(uuid())
+  roomId    String   @map("room_id")
+  room      Room     @relation(fields: [roomId], references: [id])
+  name      String?
+  boxCount  Int      @map("box_count")
+  logCount  Int      @map("log_count")
+  s3Key     String   @map("s3_key")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("snapshots")
+}
+
+model CustomerColorPreference {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  customerId String   @map("customer_id")
+  color      String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([userId, customerId])
+  @@map("customer_color_preferences")
+}
+
