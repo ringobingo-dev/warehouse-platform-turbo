@@ -26,6 +26,9 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env.development
+.env.test
+.env.production
 
 # Vercel
 .vercel
@@ -41,4 +44,20 @@ next-env.d.ts
 *.swo
 
 # Turbo
-.turbo 
+.turbo
+
+# Sensitive files
+**/secrets.json
+**/credentials.json
+**/api-keys.json
+**/config.local.json
+**/config.local.ts
+**/config.local.js
+
+# Logs
+logs
+*.log
+
+# Cache
+.cache
+.temp 
