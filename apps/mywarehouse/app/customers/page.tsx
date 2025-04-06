@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Pencil, Trash2 } from "lucide-react"
 import { NewCustomerModule } from "@/components/NewCustomerModule"
-import { UserInviteModule } from "@/components/UserInviteModule"
 
 interface Customer {
   customer_id: string
@@ -49,23 +48,8 @@ export default function CustomersPage() {
       last_name: "Doe",
       phone_number: "555-1234",
       postcode: "12345",
-      type: "warehouseOwner",
-    },
-    {
-      customer_id: "2",
-      email: "jane@example.com",
-      company_name: "XYZ Ltd",
-      view: "Limited",
-      handling_charge: 12,
-      bin_charge: 6,
-      function: "Distribution",
-      address: "456 Oak Ave",
-      first_name: "Jane",
-      last_name: "Doe",
-      phone_number: "555-5678",
-      postcode: "67890",
-      type: "roomRenter",
-    },
+      type: "Business"
+    }
   ])
 
   const [users, setUsers] = useState<User[]>([

@@ -34,6 +34,8 @@ import { getCustomerWithUsers, getPendingInvitations, inviteUserToCustomer } fro
 import type { User as UserType, UserInvitation } from "@/lib/types/user"
 import type { Customer } from "@/lib/types/customer"
 
+type UserRole = "customer_admin" | "customer_user"
+
 export default function CustomerUsersPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -43,7 +45,7 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
   const [loading, setLoading] = useState(true)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [newUserEmail, setNewUserEmail] = useState("")
-  const [newUserRole, setNewUserRole] = useState<"customer_admin" | "customer_user">("customer_user")
+  const [newUserRole, setNewUserRole] = useState<UserRole>("customer_user")
 
   // Fetch customer and users data
   useEffect(() => {
@@ -220,7 +222,10 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={newUserRole} onValueChange={(value) => setNewUserRole(value as "customer_admin" | "customer_user")}>
+                  <Select 
+                    value={newUserRole} 
+                    onValueChange={(value: UserRole) => setNewUserRole(value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
