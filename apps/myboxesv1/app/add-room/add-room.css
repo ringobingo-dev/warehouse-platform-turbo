@@ -1,0 +1,38 @@
+/* Add this to your global CSS or create a new CSS file */
+.step-content {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .step-content {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 640px) {
+  .step-content {
+    min-height: 350px;
+  }
+}
+
+/* For 3D visualizations and other content that needs fixed height */
+.visualization-container {
+  height: 400px;
+  min-height: 350px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .visualization-container {
+    height: 350px;
+  }
+}
+
+@media (max-width: 640px) {
+  .visualization-container {
+    height: 300px;
+  }
+}
+
