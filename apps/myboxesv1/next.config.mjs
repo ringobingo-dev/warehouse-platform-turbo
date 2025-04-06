@@ -21,6 +21,25 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // TEMPORARY FIX: Disable SSR for /3d-view route to prevent window is not defined error
+  // This is a workaround for the troika-worker-utils issue during SSR
+  // To roll back: Remove or comment out the following pageExtensions configuration
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
+  async rewrites() {
+    return [
+      {
+        source: '/3d-view',
+        destination: '/3d-view',
+        has: [
+          {
+            type: 'query',
+            key: 'no-ssr',
+            value: 'true'
+          }
+        ]
+      }
+    ]
+  }
 }
 
 mergeConfig(nextConfig, userConfig)

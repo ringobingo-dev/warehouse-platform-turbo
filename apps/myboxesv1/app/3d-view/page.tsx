@@ -24,6 +24,19 @@ import { getAllRoomsFromLocalStorage } from "../../lib/client-storage-utils"
 // updated for NX-compatible pathing
 import { ensureMock3DRoomsExist } from "../../utils/mockRoomGenerator"
 import { Maximize2, Minimize2, Info } from "lucide-react"
+import dynamic from 'next/dynamic'
+
+/**
+ * IMPORTANT: This is a temporary solution to prevent SSR issues with troika-worker-utils.
+ * The ThreeDViewClient component is dynamically imported with ssr: false to ensure
+ * it only runs on the client side.
+ * 
+ * Original code is preserved in comments below for reference and potential rollback.
+ */
+const ThreeDViewClient = dynamic(() => import('../../components/ThreeDViewClient'), {
+  ssr: false,
+  loading: () => <div>Loading 3D view...</div>
+})
 
 // Define the room data interface
 interface Room {
@@ -40,10 +53,16 @@ interface Room {
   isSplitSide?: boolean
   parentRoomId?: string
   sideType?: "EAST" | "WEST" | string
+  displayName?: string
 }
 
 export default function ThreeDViewPage() {
-  const { boxes, filteredBoxes } = useBoxContext()
+  // Add null check for BoxContext
+  const boxContext = useBoxContext()
+  if (!boxContext) {
+    throw new Error("BoxContext is not available")
+  }
+  const { boxes, filteredBoxes } = boxContext
   const displayBoxes = filteredBoxes.length > 0 ? filteredBoxes : boxes
   const { toast } = useToast()
 
@@ -72,7 +91,7 @@ export default function ThreeDViewPage() {
         const allRooms = getAllRoomsFromLocalStorage()
 
         // Filter to include 3D rooms and split room sides
-        const rooms3D = allRooms.filter((room) => {
+        const rooms3D = allRooms.filter((room: Room) => {
           // Check if it's a 3D room
           const is3D = room.dataType === "3d" || room.version === "3D" || room.renderType === "3D"
 
@@ -197,49 +216,46 @@ export default function ThreeDViewPage() {
   }, [visualizationMode])
 
   return (
-    <div className={`container mx-auto px-0 ${isFullscreen ? "fixed inset-0 z-50 p-4 bg-background" : ""}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">3D View</h1>
-        <div className="flex gap-2">
-          <Select value={selectedRoom} onValueChange={handleRoomChange}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Select 3D Room" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableRooms.length > 0 ? (
-                availableRooms.map((room) => (
-                  <SelectItem key={room.id} value={room.id}>
-                    {room.displayName || room.name}
-                    {room.isSplitSide && !room.displayName?.includes("Side") && ` (${room.sideType} Side)`}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" disabled>
-                  No 3D rooms available
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          <Select
-            value={visualizationMode}
-            onValueChange={(value: "basic" | "enhanced" | "realistic") => setVisualizationMode(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Visualization Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="basic">Basic</SelectItem>
-              <SelectItem value="enhanced">Enhanced</SelectItem>
-              <SelectItem value="realistic">Realistic</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={toggleInfo}>
-            <Info className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-        </div>
+    <div className="flex flex-col h-screen">
+      {/* Original StandardRoomView component is commented out for reference
+      <StandardRoomView
+        boxes={displayBoxes}
+        visualizationMode={visualizationMode}
+        isFullscreen={isFullscreen}
+        onFullscreenToggle={handleFullscreenToggle}
+      />
+      */}
+      
+      {/* New client-only Three.js view */}
+      <div className="flex-1 relative">
+        <ThreeDViewClient
+          boxes={displayBoxes}
+          visualizationMode={visualizationMode}
+        />
+      </div>
+
+      {/* Rest of the existing UI components */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowInfo(!showInfo)}
+          title="Show Information"
+        >
+          <Info className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {availableRooms.length === 0 ? (

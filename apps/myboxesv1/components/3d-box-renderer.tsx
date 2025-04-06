@@ -4,7 +4,7 @@ import type React from "react"
 import { useRef, useEffect, useState } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import { useBoxContext } from "@/contexts/BoxContext"
+import { useRoomBoxContext } from "@/contexts/RoomBoxContext"
 
 interface Box3DRendererProps {
   width?: number
@@ -14,7 +14,7 @@ interface Box3DRendererProps {
 
 const Box3DRenderer: React.FC<Box3DRendererProps> = ({ width = 800, height = 600, className = "" }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { rows, columns, stackHeight } = useBoxContext()
+  const { rows, columns, stackHeight } = useRoomBoxContext()
   const [isRendering, setIsRendering] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -216,8 +216,10 @@ const Box3DRenderer: React.FC<Box3DRendererProps> = ({ width = 800, height = 600
       }
       animate()
     } catch (error) {
-      console.error("Error initializing WebGL renderer:", error)
-      setError(`Error initializing 3D renderer: ${error.message}`)
+      // Add type assertion for error handling
+      const err = error as Error
+      console.error("Error initializing WebGL renderer:", err)
+      setError(`Error initializing 3D renderer: ${err.message}`)
 
       // Safely display error message
       if (containerRef.current && mountedRef.current) {
@@ -239,7 +241,7 @@ const Box3DRenderer: React.FC<Box3DRendererProps> = ({ width = 800, height = 600
         errorDiv.innerHTML = `
           <p class="font-bold">3D Rendering Error</p>
           <p>Your browser may not support WebGL or 3D rendering.</p>
-          <p class="text-sm mt-2">Error details: ${error.message}</p>
+          <p class="text-sm mt-2">Error details: ${err.message}</p>
         `
         containerRef.current.appendChild(errorDiv)
       }
