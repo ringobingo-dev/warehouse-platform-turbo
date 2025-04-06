@@ -2,7 +2,7 @@
   "name": "warehouse-platform-turbo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@8.15.4",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,14 +10,32 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "turbo": "^1.4.0",
-    "typescript": "^5.0.0"
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "turbo": "1.13.4",
+    "typescript": "5.3.3"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
-    "class-variance-authority": "^0.7.1"
+    "class-variance-authority": "^0.7.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "resolutions": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "@react-three/drei": "9.99.0",
+    "@react-three/fiber": "8.15.16",
+    "@react-three/postprocessing": "2.15.12",
+    "react-native": "0.73.4",
+    "date-fns": "2.30.0",
+    "vaul": "0.9.9"
   }
 }

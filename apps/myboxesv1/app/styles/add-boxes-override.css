@@ -1,0 +1,37 @@
+/* Override styles for the box addition workflow */
+
+/* Ensure proper sidebar layout */
+.sidebar-layout {
+  @apply flex h-full;
+}
+
+.sidebar-content {
+  @apply flex-1 overflow-auto;
+}
+
+/* Button overrides */
+.button-override {
+  @apply transition-colors duration-200;
+}
+
+/* Card overrides */
+.card-override {
+  @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+}
+
+/* Layout overrides */
+.main-content {
+  @apply flex-1 overflow-auto p-8;
+}
+
+/* Theme overrides */
+.theme-aware {
+  @apply bg-background text-foreground;
+}
+
+/* Responsive overrides */
+@media (max-width: 768px) {
+  .sidebar-layout {
+    @apply flex-col;
+  }
+} 
