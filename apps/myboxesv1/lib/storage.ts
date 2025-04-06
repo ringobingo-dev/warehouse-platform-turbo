@@ -16,16 +16,15 @@ const s3Client = new S3Client({
 const bucketName = process.env.BUCKET_NAME || "3dbox-snapshots"
 
 /**
- * Uploads a snapshot JSON to S3/MinIO
+ * Uploads a snapshot JSON to S3
  *
- * @param {string} userId - The user ID
  * @param {string} roomId - The room ID
  * @param {string} snapshotId - The snapshot ID
  * @param {any} data - The snapshot data to upload
- * @returns {Promise<string>} The S3/MinIO key of the uploaded file
+ * @returns {Promise<string>} The S3 key of the uploaded file
  */
-export async function uploadSnapshot(userId: string, roomId: string, snapshotId: string, data: any): Promise<string> {
-  const key = `${userId}/${roomId}/${snapshotId}.json`
+export async function uploadSnapshot(roomId: string, snapshotId: string, data: any): Promise<string> {
+  const key = `${roomId}/${snapshotId}.json`
 
   await s3Client.send(
     new PutObjectCommand({
@@ -40,9 +39,9 @@ export async function uploadSnapshot(userId: string, roomId: string, snapshotId:
 }
 
 /**
- * Gets a snapshot JSON from S3/MinIO
+ * Gets a snapshot JSON from S3
  *
- * @param {string} key - The S3/MinIO key of the snapshot
+ * @param {string} key - The S3 key of the snapshot
  * @returns {Promise<any>} The snapshot data
  */
 export async function getSnapshot(key: string): Promise<any> {
@@ -71,7 +70,7 @@ export async function getSnapshot(key: string): Promise<any> {
 /**
  * Generates a pre-signed URL for downloading a snapshot
  *
- * @param {string} key - The S3/MinIO key of the snapshot
+ * @param {string} key - The S3 key of the snapshot
  * @returns {Promise<string>} The pre-signed URL
  */
 export async function getDownloadUrl(key: string): Promise<string> {
@@ -84,9 +83,9 @@ export async function getDownloadUrl(key: string): Promise<string> {
 }
 
 /**
- * Deletes a snapshot from S3/MinIO
+ * Deletes a snapshot from S3
  *
- * @param {string} key - The S3/MinIO key of the snapshot
+ * @param {string} key - The S3 key of the snapshot
  * @returns {Promise<void>}
  */
 export async function deleteSnapshot(key: string): Promise<void> {

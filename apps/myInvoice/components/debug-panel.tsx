@@ -1,13 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useAuthStore, useUIStore } from "@/lib/store"
+import { useUIStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
-  const { user, isLoading, isInitialized, error: authError } = useAuthStore()
   const { theme, colorTheme, error: uiError } = useUIStore()
 
   if (!isOpen) {
@@ -29,21 +28,6 @@ export function DebugPanel() {
       <CardContent className="text-xs">
         <div className="space-y-2">
           <div>
-            <strong>Auth State:</strong>
-            <pre className="mt-1 rounded bg-muted p-2">
-              {JSON.stringify(
-                {
-                  isInitialized,
-                  isLoading,
-                  hasUser: !!user,
-                  error: authError,
-                },
-                null,
-                2,
-              )}
-            </pre>
-          </div>
-          <div>
             <strong>UI State:</strong>
             <pre className="mt-1 rounded bg-muted p-2">
               {JSON.stringify(
@@ -57,23 +41,6 @@ export function DebugPanel() {
               )}
             </pre>
           </div>
-          {user && (
-            <div>
-              <strong>User:</strong>
-              <pre className="mt-1 rounded bg-muted p-2">
-                {JSON.stringify(
-                  {
-                    id: user.id,
-                    email: user.email,
-                    name: `${user.firstName} ${user.lastName}`,
-                    role: user.role,
-                  },
-                  null,
-                  2,
-                )}
-              </pre>
-            </div>
-          )}
         </div>
         <div className="mt-4 flex justify-between">
           <Button
@@ -90,7 +57,6 @@ export function DebugPanel() {
             size="sm"
             variant="outline"
             onClick={() => {
-              console.log("Auth Store:", useAuthStore.getState())
               console.log("UI Store:", useUIStore.getState())
             }}
           >

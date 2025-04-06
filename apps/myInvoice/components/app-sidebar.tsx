@@ -2,15 +2,12 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart3, FileText, Settings, Users, LogOut, Warehouse, Box, Mail } from "lucide-react"
+import { BarChart3, FileText, Settings, Users, Warehouse, Box, Mail } from "lucide-react"
 
-import { useWorkOS } from "@/components/auth/workos-provider"
 import { useUIStore } from "@/lib/store"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function AppSidebar() {
-  const { signOut, user } = useWorkOS()
   const { sidebarCollapsed } = useUIStore()
   const pathname = usePathname()
 
@@ -26,10 +23,10 @@ export function AppSidebar() {
     { name: "Settings", href: "/settings", icon: Settings },
   ]
 
-  // Handle the case when user is undefined
-  const firstName = user?.firstName || "Dev"
-  const lastName = user?.lastName || "User"
-  const email = user?.email || "dev@example.com"
+  // Default user info
+  const firstName = "Dev"
+  const lastName = "User"
+  const email = "dev@example.com"
   const initials = `${firstName[0]}${lastName[0]}`
 
   return (
@@ -70,21 +67,14 @@ export function AppSidebar() {
 
       {/* Sidebar Footer */}
       <div className="border-t p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar>
-              <AvatarImage src={user?.profileImageUrl} />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-medium">{`${firstName} ${lastName}`}</div>
-              <div className="text-xs text-muted-foreground">{email}</div>
-            </div>
+        <div className="flex items-center gap-2">
+          <Avatar>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{`${firstName} ${lastName}`}</div>
+            <div className="text-xs text-muted-foreground">{email}</div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => signOut()}>
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Log out</span>
-          </Button>
         </div>
       </div>
     </div>

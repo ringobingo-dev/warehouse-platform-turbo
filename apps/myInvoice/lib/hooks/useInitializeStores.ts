@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuthStore } from "@/lib/store/useAuthStore"
 import { useCustomerStore } from "@/lib/store/useCustomerStore"
 import { useInvoiceStore } from "@/lib/store/useInvoiceStore"
 import { useUIStore } from "@/lib/store/useUIStore"
@@ -10,12 +9,10 @@ export function useInitializeStores() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const initializeAuth = useAuthStore((state) => state.initialize)
   const initializeCustomers = useCustomerStore((state) => state.initialize)
   const initializeInvoices = useInvoiceStore((state) => state.initialize)
   const initializeUI = useUIStore((state) => state.initialize)
 
-  const authError = useAuthStore((state) => state.error)
   const customerError = useCustomerStore((state) => state.error)
   const invoiceError = useInvoiceStore((state) => state.error)
   const uiError = useUIStore((state) => state.error)
@@ -25,9 +22,6 @@ export function useInitializeStores() {
       try {
         // Initialize UI first as it doesn't depend on other stores
         initializeUI()
-
-        // Initialize auth store
-        await initializeAuth()
 
         // Initialize data stores
         await Promise.all([initializeCustomers(), initializeInvoices()])
@@ -40,17 +34,17 @@ export function useInitializeStores() {
     }
 
     initialize()
-  }, [initializeAuth, initializeCustomers, initializeInvoices, initializeUI])
+  }, [initializeCustomers, initializeInvoices, initializeUI])
 
   // Collect any errors from stores
   useEffect(() => {
-    const errors = [authError, customerError, invoiceError, uiError].filter(Boolean)
+    const errors = [customerError, invoiceError, uiError].filter(Boolean)
     if (errors.length > 0) {
       setError(errors.join(", "))
     } else {
       setError(null)
     }
-  }, [authError, customerError, invoiceError, uiError])
+  }, [customerError, invoiceError, uiError])
 
   return { isInitialized, error }
 }

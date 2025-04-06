@@ -13,7 +13,6 @@ import {
   Search,
   PlusSquare,
   Briefcase,
-  LogOut,
 } from "lucide-react"
 
 import {
@@ -208,17 +207,13 @@ export function SidebarNav({ children }: SidebarNavProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                  DU
+                  MB
                 </div>
                 <div className="ml-2">
-                  <p className="text-sm font-medium">User</p>
-                  <p className="text-xs text-muted-foreground">user@example.com</p>
+                  <p className="text-sm font-medium">MyBoxes</p>
+                  <p className="text-xs text-muted-foreground">3D Box Viewer</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="ml-auto" title="Logout">
-                <LogOut className="h-4 w-4" />
-                <span className="sr-only">Logout</span>
-              </Button>
             </div>
           </SidebarFooter>
         </Sidebar>

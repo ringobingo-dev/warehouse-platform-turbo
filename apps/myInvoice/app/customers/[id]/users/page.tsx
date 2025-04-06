@@ -33,11 +33,9 @@ import { ArrowLeft, MoreHorizontal, UserPlus, Mail, AlertCircle, CheckCircle, Us
 import { getCustomerWithUsers, getPendingInvitations, inviteUserToCustomer } from "@/lib/services/customer-user-service"
 import type { User as UserType, UserInvitation } from "@/lib/types/user"
 import type { Customer } from "@/lib/types/customer"
-import { useWorkOS } from "@/components/auth/workos-provider"
 
 export default function CustomerUsersPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { user: currentUser } = useWorkOS()
   const { toast } = useToast()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [users, setUsers] = useState<UserType[]>([])
@@ -77,7 +75,7 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
 
   // Handle inviting a new user
   const handleInviteUser = async () => {
-    if (!customer || !currentUser) return
+    if (!customer) return
 
     try {
       // Validate email
@@ -100,23 +98,22 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
         return
       }
 
-      // Send invitation
-      const invitation = await inviteUserToCustomer(newUserEmail, newUserRole, customer.id, currentUser.id)
+      // Invite the user
+      const invitation = await inviteUserToCustomer(
+        newUserEmail,
+        newUserRole,
+        customer.id,
+        "system" // Since we removed auth, use a system user
+      )
 
       if (invitation) {
         setInvitations([...invitations, invitation])
-        setInviteDialogOpen(false)
         setNewUserEmail("")
-
+        setNewUserRole("customer_user")
+        setInviteDialogOpen(false)
         toast({
           title: "Invitation sent",
           description: `An invitation has been sent to ${newUserEmail}`,
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to send invitation",
-          variant: "destructive",
         })
       }
     } catch (error) {
@@ -131,178 +128,125 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
 
   // Handle resending an invitation
   const handleResendInvitation = async (invitationId: string) => {
-    // In a real app, this would call an API to resend the invitation
-    toast({
-      title: "Invitation resent",
-      description: "The invitation has been resent",
-    })
+    try {
+      // In a real implementation, this would call an API to resend the invitation
+      toast({
+        title: "Invitation resent",
+        description: "The invitation has been resent to the user",
+      })
+    } catch (error) {
+      console.error("Error resending invitation:", error)
+      toast({
+        title: "Error",
+        description: "Failed to resend invitation",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle canceling an invitation
   const handleCancelInvitation = async (invitationId: string) => {
-    // In a real app, this would call an API to cancel the invitation
-    setInvitations(invitations.filter((inv) => inv.id !== invitationId))
-
-    toast({
-      title: "Invitation canceled",
-      description: "The invitation has been canceled",
-    })
+    try {
+      // In a real implementation, this would call an API to cancel the invitation
+      setInvitations(invitations.filter((inv) => inv.id !== invitationId))
+      toast({
+        title: "Invitation canceled",
+        description: "The invitation has been canceled",
+      })
+    } catch (error) {
+      console.error("Error canceling invitation:", error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel invitation",
+        variant: "destructive",
+      })
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Customer Users"
-          description="Loading..."
-          backLink={
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/customers/${params.id}`}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Customer
-              </Link>
-            </Button>
-          }
-        />
-        <PageContainer>
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </PageContainer>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-lg font-medium">Loading customer data...</p>
+        </div>
       </div>
     )
   }
 
   if (!customer) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Customer Not Found"
-          description="The requested customer could not be found"
-          backLink={
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/customers">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Customers
-              </Link>
-            </Button>
-          }
-        />
-        <PageContainer>
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center h-64">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold">Customer not found</h2>
-              <p className="text-muted-foreground">
-                The customer you're looking for doesn't exist or has been removed.
-              </p>
-              <Button variant="outline" className="mt-4" asChild>
-                <Link href="/customers">Back to Customers</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </PageContainer>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-lg font-medium">Customer not found</p>
+          <Button variant="outline" onClick={() => router.push("/customers")}>
+            Back to Customers
+          </Button>
+        </div>
       </div>
     )
   }
 
-  const canInviteUsers =
-    customer.status === "approved" &&
-    (currentUser?.role === "admin" ||
-      (currentUser?.role === "customer_admin" && currentUser?.customerId === customer.id))
-
   return (
     <div className="flex flex-col">
       <PageHeader
-        title={`${customer.name} - Users`}
-        description="Manage users for this customer"
-        backLink={
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/customers/${params.id}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Customer
-            </Link>
-          </Button>
-        }
+        title="Customer Users"
+        description={`Manage users for ${customer.name}`}
         actions={
-          canInviteUsers ? (
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Invite User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Invite User</DialogTitle>
-                  <DialogDescription>Send an invitation to a new user for {customer.name}</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      placeholder="user@example.com"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select
-                      value={newUserRole}
-                      onValueChange={(value: "customer_admin" | "customer_user") => setNewUserRole(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="customer_admin">Customer Admin</SelectItem>
-                        <SelectItem value="customer_user">Customer User</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Customer Admins can manage users and settings. Customer Users have limited access.
-                    </p>
-                  </div>
+          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Invite User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Invite User</DialogTitle>
+                <DialogDescription>
+                  Invite a new user to access this customer's data.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    placeholder="user@example.com"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                  />
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleInviteUser}>Send Invitation</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : null
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={newUserRole} onValueChange={(value) => setNewUserRole(value as "customer_admin" | "customer_user")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer_admin">Customer Admin</SelectItem>
+                      <SelectItem value="customer_user">Customer User</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleInviteUser}>Send Invitation</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         }
       />
       <PageContainer>
-        {customer.status !== "approved" && (
-          <Card className="mb-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800">
-            <CardContent className="p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">Customer Not Approved</h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                  This customer is currently in {customer.status} status. Additional users can only be invited once the
-                  customer is approved.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid gap-6 md:grid-cols-1">
-          {/* Active Users */}
+        <div className="grid gap-4 p-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5" />
-                Active Users
-              </CardTitle>
-              <CardDescription>Users with access to this customer account</CardDescription>
+              <CardTitle>Users</CardTitle>
+              <CardDescription>Users with access to this customer's data.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -312,70 +256,61 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        No active users found
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                            <UserIcon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="font-medium">{`${user.firstName} ${user.lastName}`}</div>
+                            <div className="text-xs text-muted-foreground">{user.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === "customer_admin" ? "default" : "secondary"}>
+                          {user.role === "customer_admin" ? "Admin" : "User"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === "active" ? "default" : "secondary"}>
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem>Reset Password</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="font-medium">{`${user.firstName} ${user.lastName}`}</div>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={user.role === "customer_admin" ? "default" : "outline"}>
-                            {user.role === "customer_admin" ? (
-                              <div className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" />
-                                <span>Admin</span>
-                              </div>
-                            ) : (
-                              "User"
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.status === "active" ? "success" : "outline"}>{user.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Edit User</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">Deactivate User</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
 
-          {/* Pending Invitations */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Pending Invitations
-              </CardTitle>
-              <CardDescription>Invitations that have been sent but not yet accepted</CardDescription>
+              <CardTitle>Pending Invitations</CardTitle>
+              <CardDescription>Users who have been invited but haven't accepted yet.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -384,68 +319,50 @@ export default function CustomerUsersPage({ params }: { params: { id: string } }
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Invited By</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invitations.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        No pending invitations
+                  {invitations.map((invitation) => (
+                    <TableRow key={invitation.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          {invitation.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={invitation.role === "customer_admin" ? "default" : "secondary"}>
+                          {invitation.role === "customer_admin" ? "Admin" : "User"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>System</TableCell>
+                      <TableCell>
+                        <Badge variant={invitation.status === "pending" ? "default" : "secondary"}>
+                          {invitation.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleResendInvitation(invitation.id)}>
+                              Resend Invitation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCancelInvitation(invitation.id)}>
+                              Cancel Invitation
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    invitations.map((invitation) => {
-                      const expiresDate = new Date(invitation.expiresAt)
-                      const isExpiringSoon = expiresDate.getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000 // 2 days
-
-                      return (
-                        <TableRow key={invitation.id}>
-                          <TableCell>
-                            <div className="font-medium">{invitation.email}</div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={invitation.role === "customer_admin" ? "default" : "outline"}>
-                              {invitation.role === "customer_admin" ? (
-                                <div className="flex items-center gap-1">
-                                  <Shield className="h-3 w-3" />
-                                  <span>Admin</span>
-                                </div>
-                              ) : (
-                                "User"
-                              )}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {users.find((u) => u.id === invitation.invitedBy)?.firstName || "System"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {isExpiringSoon ? (
-                                <AlertCircle className="h-3 w-3 text-destructive" />
-                              ) : (
-                                <CheckCircle className="h-3 w-3 text-success" />
-                              )}
-                              <span className={isExpiringSoon ? "text-destructive" : ""}>
-                                {expiresDate.toLocaleDateString()}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => handleResendInvitation(invitation.id)}>
-                                Resend
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleCancelInvitation(invitation.id)}>
-                                Cancel
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>

@@ -8,15 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, LineChart, PieChart } from "@/components/charts"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { PageHeader } from "@/components/page-header"
-import { useWorkOS } from "@/components/auth/workos-provider"
 import { ArrowUpRight, DollarSign, FileText, Users } from "lucide-react"
 import { PageContainer } from "@/components/page-container"
+import type { DateRange } from "react-day-picker"
 
 export default function DashboardPage() {
-  const { user, isLoading } = useWorkOS()
   const { theme } = useTheme()
   const { colorTheme } = useUIStore()
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
@@ -39,14 +38,11 @@ export default function DashboardPage() {
     )
   }
 
-  // For development, show a placeholder if user is not available
-  const userName = user?.firstName || "Developer"
-
   return (
     <div className="flex flex-col">
       <PageHeader
         title="Dashboard"
-        description={`Welcome back, ${userName}!`}
+        description="Welcome to the Warehouse Invoice Dashboard"
         actions={<DateRangePicker value={dateRange} onValueChange={setDateRange} />}
       />
       <PageContainer>
@@ -98,33 +94,12 @@ export default function DashboardPage() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">
                   <CardHeader>
-                    <CardTitle>Revenue Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pl-2">
-                    <LineChart />
-                  </CardContent>
-                </Card>
-                <Card className="col-span-3">
-                  <CardHeader>
-                    <CardTitle>Recent Invoices</CardTitle>
-                    <CardDescription>You made 265 invoices this month.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PieChart />
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
-                  <CardHeader>
-                    <CardTitle>Storage Usage</CardTitle>
-                    <CardDescription>Storage usage across all warehouses.</CardDescription>
+                    <CardTitle>Overview</CardTitle>
                   </CardHeader>
                   <CardContent className="pl-2">
                     <BarChart />
@@ -132,66 +107,53 @@ export default function DashboardPage() {
                 </Card>
                 <Card className="col-span-3">
                   <CardHeader>
-                    <CardTitle>Invoice Status</CardTitle>
-                    <CardDescription>Distribution of invoice statuses.</CardDescription>
+                    <CardTitle>Sales</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pl-2">
                     <PieChart />
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
             <TabsContent value="analytics" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analytics</CardTitle>
-                  <CardDescription>View detailed analytics for your warehouse.</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <LineChart />
-                </CardContent>
-              </Card>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Card className="col-span-4">
+                  <CardHeader>
+                    <CardTitle>Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                    <LineChart />
+                  </CardContent>
+                </Card>
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Performance</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                    <PieChart />
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
             <TabsContent value="reports" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reports</CardTitle>
-                  <CardDescription>View and download reports for your warehouse.</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <BarChart />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="notifications" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notifications</CardTitle>
-                  <CardDescription>Manage your notification preferences.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">Email Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive email notifications for new invoices.</p>
-                      </div>
-                      <div>
-                        <input type="checkbox" className="toggle" defaultChecked />
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">SMS Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive SMS notifications for new invoices.</p>
-                      </div>
-                      <div>
-                        <input type="checkbox" className="toggle" />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Card className="col-span-4">
+                  <CardHeader>
+                    <CardTitle>Reports</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                    <BarChart />
+                  </CardContent>
+                </Card>
+                <Card className="col-span-3">
+                  <CardHeader>
+                    <CardTitle>Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                    <PieChart />
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

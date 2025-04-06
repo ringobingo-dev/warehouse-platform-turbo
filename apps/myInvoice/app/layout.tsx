@@ -1,7 +1,6 @@
 import type React from "react"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
-import { WorkOSProvider } from "@/components/auth/workos-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AppSidebar } from "@/components/app-sidebar"
 import { PersistentSidebarToggle } from "@/components/persistent-sidebar-toggle"
@@ -25,14 +24,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <WorkOSProvider>
-            <div className="flex min-h-screen">
-              <AppSidebar />
-              <PersistentSidebarToggle />
-              <MainContent>{children}</MainContent>
-            </div>
-            <Toaster />
-          </WorkOSProvider>
+          <div className="flex min-h-screen">
+            <AppSidebar />
+            <PersistentSidebarToggle />
+            <MainContent>{children}</MainContent>
+          </div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

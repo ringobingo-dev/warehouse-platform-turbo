@@ -6,6 +6,9 @@ interface UIState {
   setColorTheme: (theme: string) => void
   sidebarCollapsed: boolean
   setSidebarCollapsed: (collapsed: boolean) => void
+  initialize: () => void
+  error: string | null
+  theme: string
 }
 
 export const useUIStore = create<UIState>()(
@@ -15,10 +18,16 @@ export const useUIStore = create<UIState>()(
       setColorTheme: (theme) => set({ colorTheme: theme }),
       sidebarCollapsed: false,
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      initialize: () => {
+        // Initialize UI state if needed
+        set({ error: null })
+      },
+      error: null,
+      theme: "light"
     }),
     {
       name: "ui-storage",
-    },
-  ),
+    }
+  )
 )
 

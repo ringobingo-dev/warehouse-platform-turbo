@@ -4,13 +4,13 @@ import { Button } from "@/components/shared/ui/button"
 
 export default function HomePage() {
   return (
-    <div className="main-content theme-aware">
+    <div className="flex-1 overflow-auto p-8 bg-background text-foreground">
       <h1 className="text-4xl font-bold text-foreground mb-6">
         Styling Test Page
       </h1>
       
       {/* Testing text styles */}
-      <section className="card-override p-6 mb-8">
+      <section className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 mb-8">
         <h2 className="text-2xl font-semibold text-primary mb-4">Text Styles</h2>
         <p className="text-foreground mb-2">Regular text in foreground color</p>
         <p className="text-muted-foreground mb-2">Muted text using theme colors</p>
@@ -18,7 +18,7 @@ export default function HomePage() {
       </section>
 
       {/* Testing background colors */}
-      <section className="card-override p-6 mb-8">
+      <section className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 mb-8">
         <h2 className="text-2xl font-semibold text-primary mb-4">Background Colors</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-background border rounded">Background</div>
@@ -28,18 +28,18 @@ export default function HomePage() {
       </section>
 
       {/* Testing components */}
-      <section className="card-override p-6 mb-8">
+      <section className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 mb-8">
         <h2 className="text-2xl font-semibold text-primary mb-4">Components</h2>
         <div className="flex flex-wrap gap-4">
-          <Button className="button-override" variant="default">Default Button</Button>
-          <Button className="button-override" variant="destructive">Destructive Button</Button>
-          <Button className="button-override" variant="outline">Outline Button</Button>
-          <Button className="button-override" variant="secondary">Secondary Button</Button>
+          <Button variant="default">Default Button</Button>
+          <Button variant="destructive">Destructive Button</Button>
+          <Button variant="outline">Outline Button</Button>
+          <Button variant="secondary">Secondary Button</Button>
         </div>
       </section>
 
       {/* Testing layout utilities */}
-      <section className="card-override p-6 mb-8">
+      <section className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 mb-8">
         <h2 className="text-2xl font-semibold text-primary mb-4">Layout</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-card text-card-foreground rounded-lg shadow">

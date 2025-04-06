@@ -33,7 +33,4 @@ export function getDatabaseUrl() {
 
 // Note: In production, you would need to set these environment variables:
 // - POSTGRES_URL: Connection string for your PostgreSQL database
-// - WORKOS_API_KEY: API key for WorkOS authentication
-// - WORKOS_CLIENT_ID: Client ID for WorkOS authentication
-// - WORKOS_REDIRECT_URI: Redirect URI for WorkOS authentication
 
