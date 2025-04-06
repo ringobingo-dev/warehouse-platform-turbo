@@ -1,9 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { lazy, Suspense } from "react"
-import type { ComponentType } from "react"
+import React, { lazy, Suspense, type ComponentType } from "react"
 import { debugLog } from "./debugUtils"
 
 // Error boundary for catching chunk loading errors

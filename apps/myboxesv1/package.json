@@ -43,7 +43,6 @@
     "yup": "latest",
     "zod": "latest",
     "zustand": "latest",
-    "@workos-inc/node": "^8.0.0",
     "ui": "workspace:*"
   },
   "devDependencies": {
