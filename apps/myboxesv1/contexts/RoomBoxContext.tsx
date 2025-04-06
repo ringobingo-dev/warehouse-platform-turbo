@@ -3,7 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect, type ReactNode, useMemo } from "react"
 
-interface BoxContextType {
+// Changed from BoxContextType to RoomBoxContextType for better clarity and to avoid confusion with the complex context
+interface RoomBoxContextType {
   rows: number
   columns: number
   stackHeight: number
@@ -13,7 +14,8 @@ interface BoxContextType {
 }
 
 // Default context with no-op functions
-const defaultContext: BoxContextType = {
+// Updated to use RoomBoxContextType instead of BoxContextType
+const defaultContext: RoomBoxContextType = {
   rows: 3,
   columns: 3,
   stackHeight: 3,
@@ -23,26 +25,31 @@ const defaultContext: BoxContextType = {
 }
 
 // Create context with a more descriptive name
-const BoxContext = createContext<BoxContextType>(defaultContext)
+// Changed from BoxContext to RoomBoxContext for better clarity
+const RoomBoxContext = createContext<RoomBoxContextType>(defaultContext)
 
 // Custom hook with error handling
-export const useBoxContext = () => {
-  const context = useContext(BoxContext)
+// Changed from useBoxContext to useRoomBoxContext for better clarity
+export const useRoomBoxContext = () => {
+  const context = useContext(RoomBoxContext)
 
   if (!context) {
-    console.error("useBoxContext must be used within a BoxProvider")
+    console.error("useRoomBoxContext must be used within a RoomBoxProvider")
     return defaultContext
   }
 
   return context
 }
 
-interface BoxProviderProps {
+// Changed from BoxProviderProps to RoomBoxProviderProps for consistency
+interface RoomBoxProviderProps {
   children: ReactNode
-  initialValues?: Partial<Omit<BoxContextType, "setRows" | "setColumns" | "setStackHeight">>
+  // Updated to use RoomBoxContextType instead of BoxContextType
+  initialValues?: Partial<Omit<RoomBoxContextType, "setRows" | "setColumns" | "setStackHeight">>
 }
 
-export const BoxProvider: React.FC<BoxProviderProps> = ({ children, initialValues = {} }) => {
+// Changed from BoxProvider to RoomBoxProvider for better clarity
+export const RoomBoxProvider: React.FC<RoomBoxProviderProps> = ({ children, initialValues = {} }) => {
   // Use state with safe defaults
   const [rows, setRows] = useState(initialValues.rows ?? defaultContext.rows)
   const [columns, setColumns] = useState(initialValues.columns ?? defaultContext.columns)
@@ -50,7 +57,7 @@ export const BoxProvider: React.FC<BoxProviderProps> = ({ children, initialValue
 
   // Debug logging
   useEffect(() => {
-    console.log("BoxProvider initialized with:", { rows, columns, stackHeight })
+    console.log("RoomBoxProvider initialized with:", { rows, columns, stackHeight })
   }, [rows, columns, stackHeight])
 
   // Create memoized context value to prevent unnecessary re-renders
@@ -66,6 +73,6 @@ export const BoxProvider: React.FC<BoxProviderProps> = ({ children, initialValue
     [rows, columns, stackHeight],
   )
 
-  return <BoxContext.Provider value={value}>{children}</BoxContext.Provider>
+  return <RoomBoxContext.Provider value={value}>{children}</RoomBoxContext.Provider>
 }
 
