@@ -53,6 +53,9 @@ next-env.d.ts
 **/config.local.json
 **/config.local.ts
 **/config.local.js
+**/docs/state-management-and-data-fetching.md
+**/docs/*-secrets.md
+**/docs/*-keys.md
 
 # Logs
 logs
