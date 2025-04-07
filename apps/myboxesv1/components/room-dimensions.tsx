@@ -11,14 +11,24 @@ import { Input } from "./ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 // NX: Context with multiple levels of parent directories
 import { useBoxContext } from "../context/BoxContext"
+import type { VisualBox } from "../context/BoxContext"
 
 interface RoomDimensionsProps {
   onClose: () => void
 }
 
 export function RoomDimensions({ onClose }: RoomDimensionsProps) {
-  const { rows, columns, levels, setRows, setColumns, setLevels, setBoxes, setStackHeight } = useBoxContext()
+  const context = useBoxContext()
+  if (!context) {
+    throw new Error("RoomDimensions must be used within a BoxContextProvider")
+  }
+
+  const { rows, columns, levels, setRows, setColumns, setLevels, setBoxes, setStackHeight } = context
   const [isAdmin, setIsAdmin] = useState(false)
+
+  const handleBoxesUpdate = (filterFn: (box: VisualBox) => boolean) => {
+    setBoxes((prevBoxes) => prevBoxes.filter(filterFn))
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -59,10 +69,10 @@ export function RoomDimensions({ onClose }: RoomDimensionsProps) {
                 <Label htmlFor="rows-select">Number of Rows</Label>
                 <Select
                   value={rows.toString()}
-                  onValueChange={(value) => {
+                  onValueChange={(value: string) => {
                     const newRows = Number(value)
                     setRows(newRows)
-                    setBoxes((prevBoxes) => prevBoxes.filter((box) => box.row < newRows))
+                    handleBoxesUpdate((box) => box.position[0] < newRows)
                   }}
                 >
                   <SelectTrigger id="rows-select">
@@ -81,10 +91,10 @@ export function RoomDimensions({ onClose }: RoomDimensionsProps) {
                 <Label htmlFor="columns-select">Number of Columns</Label>
                 <Select
                   value={columns.toString()}
-                  onValueChange={(value) => {
+                  onValueChange={(value: string) => {
                     const newColumns = Number(value)
                     setColumns(newColumns)
-                    setBoxes((prevBoxes) => prevBoxes.filter((box) => box.column < newColumns))
+                    handleBoxesUpdate((box) => box.position[1] < newColumns)
                   }}
                 >
                   <SelectTrigger id="columns-select">
@@ -103,11 +113,10 @@ export function RoomDimensions({ onClose }: RoomDimensionsProps) {
                 <Label htmlFor="levels-select">Number of Levels</Label>
                 <Select
                   value={levels.toString()}
-                  onValueChange={(value) => {
+                  onValueChange={(value: string) => {
                     const newLevels = Number(value)
                     setLevels(newLevels)
-                    setBoxes((prevBoxes) => prevBoxes.filter((box) => box.level < newLevels))
-                    // Always set stack height to match levels when changing levels
+                    handleBoxesUpdate((box) => box.position[2] < newLevels)
                     setStackHeight(newLevels)
                   }}
                 >

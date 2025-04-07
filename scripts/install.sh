@@ -33,11 +33,48 @@ log_status() {
     esac
 }
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to verify server health
+verify_server_health() {
+    local port=$1
+    local max_attempts=30
+    local attempt=1
+    local wait_time=2
+
+    log_status "info" "Verifying server health on port $port..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port" | grep -q "200"; then
+            log_status "success" "Server on port $port is healthy and responding"
+            return 0
+        fi
+        
+        log_status "info" "Attempt $attempt: Server not ready, waiting ${wait_time}s..."
+        sleep $wait_time
+        attempt=$((attempt + 1))
+    done
+    
+    log_status "error" "Server on port $port failed to start after $max_attempts attempts"
+    return 1
+}
+
 # Start installation process
 log "${BLUE}=== Starting Installation Process ===${NC}"
 log "Timestamp: $(date)"
 log "Log file: $LOG_FILE"
 log "Monorepo root: $MONOREPO_ROOT"
+
+# Check for required commands
+for cmd in pnpm node npm curl; do
+    if ! command_exists "$cmd"; then
+        log_status "error" "Required command '$cmd' is not installed"
+        exit 1
+    fi
+done
 
 # Step 1: Clean up any existing installations
 log_status "info" "Step 1: Cleaning up existing installations..."
@@ -116,20 +153,27 @@ pnpm dev &
 SERVER_PID=$!
 log_status "success" "Server started with PID: $SERVER_PID"
 
-# Step 7: Wait for server to be ready
-log_status "info" "Step 7: Waiting for server to be ready..."
-sleep 10  # Give the server time to start
-
-# Step 8: Test server with curl
-log_status "info" "Step 8: Testing server with curl..."
-CURL_OUTPUT=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
-if [ "$CURL_OUTPUT" -eq 200 ]; then
-    log_status "success" "Server is responding correctly (HTTP 200)"
-else
-    log_status "error" "Server test failed (HTTP $CURL_OUTPUT)"
+# Step 7: Wait for server to be ready and verify health
+log_status "info" "Step 7: Verifying server health..."
+if ! verify_server_health 3000; then
+    log_status "error" "Server health check failed"
     kill $SERVER_PID
     exit 1
 fi
+
+# Step 8: Perform detailed server verification
+log_status "info" "Step 8: Performing detailed server verification..."
+for port in 3000 3001 3002; do
+    log_status "info" "Checking server on port $port..."
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port")
+    if [ "$HTTP_STATUS" -eq 200 ]; then
+        log_status "success" "Server on port $port is responding correctly (HTTP 200)"
+    else
+        log_status "error" "Server on port $port returned HTTP $HTTP_STATUS"
+        kill $SERVER_PID
+        exit 1
+    fi
+done
 
 # Step 9: Final status
 log "${BLUE}=== Installation Process Complete ===${NC}"

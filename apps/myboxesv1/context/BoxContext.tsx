@@ -11,29 +11,89 @@ import { saveBoxData, loadBoxData } from "@/utils/storage-utils"
 import { BoxAddMagic } from "@/components/box-add-magic"
 import { BoxRemovalMagic } from "@/components/box-removal-magic"
 import boxData from "@/data/boxData.json"
+import { Box as WarehouseBox, LogEntry, Snapshot } from '@/types/Box'
 
-// Define the shape of our box data
+// Update the Box interface to maintain backward compatibility
 interface Box {
+  // Core Properties
+  row: number
+  column: number
+  level: number
+  logIndex: number
+
+  // Business Properties
+  customerName: string
+  varietyName: string
+  grade: string
+  loadingDate: string
+  size: "rectangle" | "square"
+  color: string
+  highlighted: boolean
+
+  // Legacy Location Properties (maintained for backward compatibility)
+  location?: string  // Legacy format: "A1", "A2", etc.
+}
+
+// Export the VisualBox type with backward compatibility
+export interface VisualBox {
+  // Core Properties
   id: string
-  position: [number, number, number]
+  timestamp: number
+  highlighted: boolean
+  logIndex: number
+
+  // Business Properties
+  customerName: string
+  varietyName: string
+  grade: string
+  loadingDate: string
+  boxSize: "rectangle" | "square"
+  customerBoxColor: string
+
+  // Location Properties (both formats for backward compatibility)
+  position: [number, number, number]  // New format: [row, column, level]
+  locations: string[]                 // Legacy format: ["A1", "A2", "A3"]
+  // Legacy properties (maintained for backward compatibility)
+  row?: number
+  column?: number
+  level?: number
+  location?: string
+
+  // Visualization Properties
   size: [number, number, number]
   color: string
-  timestamp: number
 }
 
-interface LogEntry {
+// Define visualization-specific log entry type
+interface VisualLogEntry {
+  // Required by LogEntry
+  customerName: string
+  boxCount: number
+  varietyName: string
+  grade: string
+  loadingDate: string
+  locations: string[]
+  boxSize: "rectangle" | "square"
+  color: string
+  timestamp: number
+  startingRow: number
+  stackHeight: number
+  customerBoxColor: string
+  id?: string
+
+  // Additional visualization properties
   action: string
-  boxId?: string
-  timestamp: number
-  details?: any
+  boxId: string
+  details: string
 }
 
-interface Snapshot {
-  id: string
+// Define visualization-specific snapshot type
+interface VisualSnapshot {
+  id: number
   name: string
   timestamp: number
-  boxes: Box[]
-  description?: string
+  boxes: VisualBox[]
+  log: VisualLogEntry[]
 }
 
 interface BoxContextType {
@@ -46,10 +106,10 @@ interface BoxContextType {
   setLevels: (levels: number) => void
 
   // Box state
-  boxes: Box[]
-  setBoxes: React.Dispatch<React.SetStateAction<Box[]>>
-  filteredBoxes: Box[]
-  setFilteredBoxes: React.Dispatch<React.SetStateAction<Box[]>>
+  boxes: VisualBox[]
+  setBoxes: React.Dispatch<React.SetStateAction<VisualBox[]>>
+  filteredBoxes: VisualBox[]
+  setFilteredBoxes: React.Dispatch<React.SetStateAction<VisualBox[]>>
 
   // Box configuration
   boxSize: "rectangle" | "square"
@@ -58,8 +118,8 @@ interface BoxContextType {
   setStackHeight: (height: number) => void
 
   // Selection state
-  selectedRow: string | null
-  setSelectedRow: (row: string | null) => void
+  selectedRow: number
+  setSelectedRow: (row: number) => void
   availableRows: number[]
 
   // Customer/variety/grade selection
@@ -81,14 +141,14 @@ interface BoxContextType {
   setLoadingDate: (date: string) => void
 
   // Log
-  log: LogEntry[]
-  setLog: React.Dispatch<React.SetStateAction<LogEntry[]>>
+  log: VisualLogEntry[]
+  setLog: React.Dispatch<React.SetStateAction<VisualLogEntry[]>>
   selectedLogIndex: number | null
   setSelectedLogIndex: (index: number | null) => void
 
   // Snapshots
-  snapshots: Snapshot[]
-  setSnapshots: React.Dispatch<React.SetStateAction<Snapshot[]>>
+  snapshots: VisualSnapshot[]
+  setSnapshots: React.Dispatch<React.SetStateAction<VisualSnapshot[]>>
 
   // UI state
   isLogVisible: boolean
@@ -103,11 +163,11 @@ interface BoxContextType {
   setErrorMessage: (message: string | null) => void
 
   // Functions
-  addBoxes: () => Promise<void>
-  removeBoxes: () => void
+  addBoxes: (newBoxes: Box[]) => void
+  removeBoxes: (boxIds: string[]) => void
   reapplyLastRemoved: () => void
-  saveSnapshot: (customSnapshot?: Snapshot) => Snapshot | void
-  loadSnapshot: (snapshot: Snapshot) => void
+  saveSnapshot: (name: string) => void
+  loadSnapshot: (snapshot: VisualSnapshot) => void
   handleLogEntrySelect: (index: number) => void
   getRoomCapacity: () => number
   handleSearch: (filters: FilterCriteria) => void
@@ -120,15 +180,19 @@ interface BoxContextType {
   customerColorPreferences: Record<string, string>
   setCustomerColorPreferences: React.Dispatch<React.SetStateAction<Record<string, string>>>
 
-  addBox: (box: Box) => void
+  // Box operations
+  addBox: (box: VisualBox) => void
   removeBox: (id: string) => void
-  updateBox: (id: string, updates: Partial<Box>) => void
+  updateBox: (id: string, updates: Partial<VisualBox>) => void
   clearBoxes: () => void
-  addLogEntry: (entry: LogEntry) => void
+  addLogEntry: (entry: VisualLogEntry) => void
   createSnapshot: (name: string, description?: string) => void
   loadSnapshotById: (id: string) => void
   deleteSnapshot: (id: string) => void
   importData: (data: any) => void
+
+  // Add isFiltered property
+  isFiltered: boolean
 }
 
 // Create the context with a default undefined value
@@ -164,7 +228,7 @@ export function BoxProvider({ children }: BoxProviderProps) {
     setLevels(newLevels)
     setStackHeight((prevStackHeight) => Math.min(prevStackHeight, newLevels))
   }, [])
-  const [selectedRow, setSelectedRow] = useState<string | null>(null)
+  const [selectedRow, setSelectedRow] = useState<number>(1)
   const [stackHeight, setStackHeight] = useState<number>(UI_CONSTANTS.DEFAULT_STACK_HEIGHT)
   const [boxCount, setBoxCount] = useState<string>("")
   const [selectedCustomer, setSelectedCustomer] = useState<string>("")
@@ -176,19 +240,23 @@ export function BoxProvider({ children }: BoxProviderProps) {
   const [customerBoxColor, setCustomerBoxColor] = useState<string>(UI_CONSTANTS.DEFAULT_BOX_COLOR)
   const [selectedLogIndex, setSelectedLogIndex] = useState<number | null>(null)
   const [isRoomDimensionsVisible, setIsRoomDimensionsVisible] = useState(false)
-  const [filteredBoxes, setFilteredBoxes] = useState<Box[]>([])
+  const [filteredBoxes, setFilteredBoxes] = useState<VisualBox[]>([])
   const [showRoomView, setShowRoomView] = useState(initialBoxes.length > 0)
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const [snapshots, setSnapshots] = useState<VisualSnapshot[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [customerColorPreferences, setCustomerColorPreferences] = useState<Record<string, string>>({})
   const [isLoaded, setIsLoaded] = useState(false)
   const [isErrorDisplayed, setIsErrorDisplayed] = useState(false)
 
   // Initialize state with empty arrays to prevent undefined errors
-  const [boxes, setBoxes] = useState<Box[]>([])
-  const [log, setLog] = useState<LogEntry[]>([])
+  const [boxes, setBoxes] = useState<VisualBox[]>([])
+  const [log, setLog] = useState<VisualLogEntry[]>([])
 
-  // Initialize our magic components
+  // Add isFiltered state
+  const [isFiltered, setIsFiltered] = useState(false);
+
+  // Initialize our magic components (temporarily commented out as placeholders)
+  /*
   const { addBoxes: addBoxesMagic, findNextAvailableSpace } = BoxAddMagic({
     boxes,
     setBoxes,
@@ -204,7 +272,79 @@ export function BoxProvider({ children }: BoxProviderProps) {
     setLog,
     validateBoxData,
   })
+  */
 
+  // Helper functions for location conversion
+  const positionToLocation = (position: [number, number, number]): string => {
+    const [row, col, level] = position;
+    return `${String.fromCharCode(64 + row)}${col}${level}`;
+  };
+
+  const locationToPosition = (location: string): [number, number, number] => {
+    const row = location.charCodeAt(0) - 64;
+    const col = parseInt(location.slice(1, -1));
+    const level = parseInt(location.slice(-1));
+    return [row, col, level];
+  };
+
+  // Helper functions for box ID generation
+  const generateBoxId = (location: string): string => {
+    return `box_${location}`;
+  };
+
+  const getLocationFromId = (boxId: string): string => {
+    return boxId.replace('box_', '');
+  };
+
+  // Update the convertBoxToVisualBox function to maintain backward compatibility
+  const convertBoxToVisualBox = (box: Box): VisualBox => {
+    const position: [number, number, number] = [box.row, box.column, box.level];
+    const location = box.location || positionToLocation(position);
+    
+    return {
+      id: generateBoxId(location),
+      position,
+      locations: [location],
+      size: box.size === "rectangle" ? [2, 1, 1] : [1, 1, 1],
+      color: box.color,
+      timestamp: Date.now(),
+      highlighted: box.highlighted,
+      logIndex: box.logIndex,
+      customerName: box.customerName,
+      varietyName: box.varietyName,
+      grade: box.grade,
+      loadingDate: box.loadingDate,
+      boxSize: box.size,
+      customerBoxColor: box.color,
+      // Legacy properties
+      row: box.row,
+      column: box.column,
+      level: box.level,
+      location: box.location
+    };
+  };
+
+  // Update the convertVisualBoxToBox function to maintain backward compatibility
+  const convertVisualBoxToBox = (visualBox: VisualBox): Box => {
+    const [row, column, level] = visualBox.position;
+    return {
+      row,
+      column,
+      level,
+      customerName: visualBox.customerName,
+      varietyName: visualBox.varietyName,
+      grade: visualBox.grade,
+      loadingDate: visualBox.loadingDate,
+      color: visualBox.color,
+      highlighted: visualBox.highlighted,
+      size: visualBox.boxSize,
+      logIndex: visualBox.logIndex,
+      // Legacy property
+      location: visualBox.location || positionToLocation(visualBox.position)
+    };
+  };
+
+  // Update the updateAvailableRowsAndSelection function
   const updateAvailableRowsAndSelection = useCallback(() => {
     // Create a map to track box counts for each row
     const rowOccupancy = new Map<number, { columns: Set<number>; levels: Set<number> }>()
@@ -219,84 +359,58 @@ export function BoxProvider({ children }: BoxProviderProps) {
 
     // Count boxes in each row, tracking unique columns and levels
     boxes.forEach((box) => {
-      const rowData = rowOccupancy.get(box.row)
+      const [row, column, level] = box.position;
+      const rowData = rowOccupancy.get(row)
       if (rowData) {
-        rowData.columns.add(box.column)
-        rowData.levels.add(box.level)
+        rowData.columns.add(column)
+        rowData.levels.add(level)
       }
     })
 
-    // A row is available if it's not completely full
-    const available = Array.from({ length: rows }, (_, i) => i + 1).filter((row) => {
-      const rowData = rowOccupancy.get(row)
-      if (!rowData) return true
+    // Calculate available rows
+    const availableRows = Array.from({ length: rows }, (_, i) => i + 1)
+      .filter((row) => {
+        const rowData = rowOccupancy.get(row)
+        return rowData && rowData.columns.size < columns
+      })
 
-      // Check if this row has reached capacity
-      // A row is full when all columns have boxes stacked to the stackHeight
-      const isRowFull =
-        rowData.columns.size >= columns &&
-        Array.from(rowData.columns).every((col) => {
-          const boxesInColumn = boxes.filter((b) => b.row === row && b.column === col)
-          return boxesInColumn.length >= stackHeight
-        })
+    // Update state
+    setAvailableRows(availableRows)
 
-      return !isRowFull
-    })
-
-    setAvailableRows(available)
-
-    // If the currently selected row is no longer available, select the first available row
-    if (selectedRow && !available.includes(Number.parseInt(selectedRow))) {
-      const nextAvailableRow = available[0]
-      setSelectedRow(nextAvailableRow !== undefined ? nextAvailableRow.toString() : null)
-    }
-
-    // If no row is selected and there are available rows, select the first one
-    if (!selectedRow && available.length > 0) {
-      setSelectedRow(available[0].toString())
+    // If selected row is no longer available, select the first available row
+    if (!availableRows.includes(selectedRow)) {
+      setSelectedRow(availableRows[0] || 1)
     }
   }, [rows, columns, stackHeight, boxes, selectedRow])
 
   // Load data from localStorage on mount
   useEffect(() => {
-    try {
-      // Try to load data from localStorage first
-      const storedData = loadBoxData()
-
-      if (storedData && storedData.boxes) {
-        setBoxes(storedData.boxes)
-        setLog(storedData.log || [])
-        setSnapshots(storedData.snapshots || [])
-        // Load customer color preferences if available
-        if (storedData.customerColorPreferences) {
-          setCustomerColorPreferences(storedData.customerColorPreferences)
-        }
-        console.log("Loaded box data from localStorage")
-      } else {
-        // Fall back to the initial data from boxData.json
-        // Ensure we're providing valid arrays even if boxData is incomplete
-        setBoxes(boxData.boxes || [])
-        setLog(boxData.log || [])
-        console.log("Using initial box data from boxData.json")
-      }
-
-      // Safely validate the data
+    const storedBoxes = localStorage.getItem('boxes');
+    const storedLogEntries = localStorage.getItem('logEntries');
+    
+    if (storedBoxes) {
       try {
-        validateBoxData(boxes, log)
-      } catch (validationError) {
-        console.error("Error during initial data validation:", validationError)
-        // Don't throw, just log the error
+        const parsedBoxes = JSON.parse(storedBoxes);
+        // Convert stored boxes to VisualBox format
+        const visualBoxes = parsedBoxes.map((box: Box) => convertBoxToVisualBox(box));
+        setBoxes(visualBoxes);
+      } catch (error) {
+        console.error('Error loading boxes:', error);
       }
-      setIsLoaded(true)
-    } catch (error) {
-      console.error("Error loading initial data:", error)
-      // Set default empty arrays to prevent further errors
-      setBoxes([])
-      setLog([])
-      setSnapshots([])
-      setIsLoaded(true)
     }
-  }, [])
+    
+    if (storedLogEntries) {
+      try {
+        const parsedLogEntries = JSON.parse(storedLogEntries);
+        setLog(parsedLogEntries);
+      } catch (error) {
+        console.error('Error loading log entries:', error);
+      }
+    }
+    
+    // Set isLoaded to true after initialization
+    setIsLoaded(true);
+  }, []);
 
   // Save data to localStorage whenever it changes
   useEffect(() => {
@@ -334,16 +448,20 @@ export function BoxProvider({ children }: BoxProviderProps) {
   }, [boxes.length, showRoomView])
 
   useEffect(() => {
-    // Only save if we have actual data to save
     if (
       boxes.length > 0 ||
       log.length > 0 ||
       snapshots.length > 0 ||
       Object.keys(customerColorPreferences).length > 0
     ) {
-      saveBoxData(boxes, log, snapshots, customerColorPreferences)
+      const warehouseBoxes = boxes.map(convertVisualBoxToBox);
+      const warehouseSnapshots = snapshots.map(snapshot => ({
+        ...snapshot,
+        boxes: snapshot.boxes.map(convertVisualBoxToBox)
+      }));
+      saveBoxData(warehouseBoxes, log, warehouseSnapshots, customerColorPreferences);
     }
-  }, [boxes, log, snapshots, customerColorPreferences])
+  }, [boxes, log, snapshots, customerColorPreferences]);
 
   useEffect(() => {
     if (selectedCustomer && customerColorPreferences[selectedCustomer]) {
@@ -353,37 +471,106 @@ export function BoxProvider({ children }: BoxProviderProps) {
     }
   }, [selectedCustomer, customerColorPreferences])
 
-  // Add a new box
-  const addBox = (box: Box) => {
-    setBoxes((prev) => [...prev, box])
-    addLogEntry({
-      action: "add_box",
+  // Update the addBoxes function
+  const addBoxes = useCallback((newBoxes: Box[]) => {
+    const visualBoxes = newBoxes.map(convertBoxToVisualBox);
+    setBoxes(prevBoxes => [...prevBoxes, ...visualBoxes]);
+    
+    // Create log entries for the new boxes
+    const newLogEntries = visualBoxes.map(box => ({
+      action: 'add',
       boxId: box.id,
       timestamp: Date.now(),
-      details: { box },
-    })
-  }
+      details: `Added box ${box.id} for ${box.customerName}`,
+      customerName: box.customerName,
+      boxCount: 1,
+      varietyName: box.varietyName,
+      grade: box.grade,
+      loadingDate: box.loadingDate,
+      locations: box.locations,
+      boxSize: box.boxSize,
+      color: box.color,
+      startingRow: box.position[0],
+      stackHeight,
+      customerBoxColor: box.customerBoxColor
+    }));
+    
+    setLog(prevLog => [...prevLog, ...newLogEntries]);
+    updateAvailableRowsAndSelection();
+  }, [updateAvailableRowsAndSelection, stackHeight]);
 
-  // Remove a box by id
-  const removeBox = (id: string) => {
-    setBoxes((prev) => prev.filter((box) => box.id !== id))
-    addLogEntry({
-      action: "remove_box",
+  // Update the removeBoxes function
+  const removeBoxes = useCallback((boxIds: string[]) => {
+    setBoxes(prevBoxes => prevBoxes.filter(box => !boxIds.includes(box.id)));
+    
+    // Create log entries for removed boxes
+    const newLogEntries = boxIds.map(id => ({
+      action: 'remove',
       boxId: id,
       timestamp: Date.now(),
-    })
-  }
+      details: `Removed box ${id}`,
+      customerName: selectedCustomer,
+      boxCount: -1,
+      varietyName: selectedVariety,
+      grade: selectedGrade,
+      loadingDate,
+      locations: [],
+      boxSize,
+      color: customerBoxColor,
+      startingRow: selectedRow,
+      stackHeight,
+      customerBoxColor
+    }));
+    
+    setLog(prevLog => [...prevLog, ...newLogEntries]);
+    updateAvailableRowsAndSelection();
+  }, [updateAvailableRowsAndSelection, selectedCustomer, selectedVariety, selectedGrade, loadingDate, boxSize, customerBoxColor, selectedRow, stackHeight]);
 
-  // Update a box by id
-  const updateBox = (id: string, updates: Partial<Box>) => {
-    setBoxes((prev) => prev.map((box) => (box.id === id ? { ...box, ...updates } : box)))
+  // Update the addBox function
+  const addBox = (box: VisualBox) => {
+    setBoxes(prevBoxes => [...prevBoxes, box]);
     addLogEntry({
-      action: "update_box",
+      action: 'add',
+      boxId: box.id,
+      timestamp: Date.now(),
+      details: `Added box ${box.id} for ${box.customerName}`,
+      customerName: box.customerName,
+      boxCount: 1,
+      varietyName: box.varietyName,
+      grade: box.grade,
+      loadingDate: box.loadingDate,
+      locations: box.locations,
+      boxSize: box.boxSize,
+      color: box.color,
+      startingRow: box.position[0],
+      stackHeight,
+      customerBoxColor: box.customerBoxColor
+    });
+  };
+
+  // Update the updateBox function
+  const updateBox = (id: string, updates: Partial<VisualBox>) => {
+    setBoxes(prevBoxes => prevBoxes.map(box => 
+      box.id === id ? { ...box, ...updates } : box
+    ));
+    addLogEntry({
+      action: 'update',
       boxId: id,
       timestamp: Date.now(),
-      details: { updates },
-    })
-  }
+      details: `Updated box ${id}`,
+      customerName: selectedCustomer,
+      boxCount: 0,
+      varietyName: selectedVariety,
+      grade: selectedGrade,
+      loadingDate,
+      locations: [],
+      boxSize,
+      color: customerBoxColor,
+      startingRow: selectedRow,
+      stackHeight,
+      customerBoxColor
+    });
+  };
 
   // Clear all boxes
   const clearBoxes = () => {
@@ -391,52 +578,122 @@ export function BoxProvider({ children }: BoxProviderProps) {
     addLogEntry({
       action: "clear_boxes",
       timestamp: Date.now(),
+      customerName: selectedCustomer,
+      boxCount: 0,
+      varietyName: selectedVariety,
+      grade: selectedGrade,
+      loadingDate,
+      locations: [],
+      boxSize,
+      color: customerBoxColor,
+      startingRow: selectedRow,
+      stackHeight,
+      customerBoxColor,
+      boxId: "",
+      details: "Cleared all boxes"
     })
   }
 
-  // Add a log entry
-  const addLogEntry = (entry: LogEntry) => {
-    setLog((prev) => [...prev, entry])
-  }
+  // Update the addLogEntry function
+  const addLogEntry = (entry: VisualLogEntry) => {
+    const fullEntry: VisualLogEntry = {
+      customerName: selectedCustomer,
+      boxCount: parseInt(boxCount) || 0,
+      varietyName: selectedVariety,
+      grade: selectedGrade,
+      loadingDate,
+      locations: [],
+      boxSize,
+      color: customerBoxColor,
+      timestamp: Date.now(),
+      startingRow: selectedRow,
+      stackHeight,
+      customerBoxColor,
+      action: entry.action,
+      boxId: entry.boxId,
+      details: entry.details
+    };
+    setLog(prevLog => [...prevLog, fullEntry]);
+  };
 
-  // Create a snapshot of the current state
-  const createSnapshot = (name: string, description?: string) => {
-    const snapshot: Snapshot = {
-      id: `snapshot_${Date.now()}`,
+  // Type declarations for snapshot and box management functions
+  type SaveSnapshotFunction = (name: string) => void;
+  type RemoveBoxFunction = (id: string) => void;
+  type ImportDataFunction = (data: any) => void;
+
+  // Implement the saveSnapshot function
+  const saveSnapshot: SaveSnapshotFunction = useCallback((name: string) => {
+    const snapshot: VisualSnapshot = {
+      id: Date.now(),
       name,
       timestamp: Date.now(),
-      boxes: [...boxes],
-      description,
+      boxes,
+      log
+    };
+    setSnapshots(prev => [...prev, snapshot]);
+  }, [boxes, log]);
+
+  // Implement the removeBox function
+  const removeBox: RemoveBoxFunction = useCallback((id: string) => {
+    setBoxes(prev => prev.filter(box => box.id !== id));
+  }, []);
+
+  // Implement the importData function
+  const importData: ImportDataFunction = useCallback((data: any) => {
+    if (data.boxes) {
+      const visualBoxes = data.boxes.map((box: Box) => convertBoxToVisualBox(box));
+      setBoxes(visualBoxes);
     }
-    setSnapshots((prev) => [...prev, snapshot])
-    addLogEntry({
-      action: "create_snapshot",
+    if (data.log) {
+      setLog(data.log);
+    }
+    if (data.snapshots) {
+      setSnapshots(data.snapshots);
+    }
+  }, []);
+
+  // Create a snapshot of the current state
+  const createSnapshot = useCallback((name: string) => {
+    const snapshot: VisualSnapshot = {
+      id: Date.now(),
+      name,
       timestamp: Date.now(),
-      details: { snapshotId: snapshot.id, name },
-    })
-  }
+      boxes,
+      log
+    };
+    setSnapshots(prev => [...prev, snapshot]);
+  }, [boxes, log]);
 
   // Load a snapshot
+  const loadSnapshot = useCallback((snapshot: VisualSnapshot) => {
+    try {
+      if (!snapshot || !snapshot.boxes) {
+        throw new Error("Invalid snapshot data.");
+      }
+
+      setBoxes(snapshot.boxes);
+      setLog(snapshot.log);
+
+      toast({
+        title: "Success",
+        description: "Snapshot loaded successfully.",
+      });
+    } catch (error) {
+      handleError(error, "Failed to load snapshot. Please try again.");
+    }
+  }, []);
+
+  // Load a snapshot by id
   const loadSnapshotById = (id: string) => {
-    const snapshot = snapshots.find((s) => s.id === id)
+    const snapshot = snapshots.find(s => s.id.toString() === id)
     if (snapshot) {
-      setBoxes([...snapshot.boxes])
-      addLogEntry({
-        action: "load_snapshot",
-        timestamp: Date.now(),
-        details: { snapshotId: id, name: snapshot.name },
-      })
+      loadSnapshot(snapshot)
     }
   }
 
   // Delete a snapshot
   const deleteSnapshot = (id: string) => {
-    setSnapshots((prev) => prev.filter((s) => s.id !== id))
-    addLogEntry({
-      action: "delete_snapshot",
-      timestamp: Date.now(),
-      details: { snapshotId: id },
-    })
+    setSnapshots(prevSnapshots => prevSnapshots.filter(s => s.id.toString() !== id))
   }
 
   /**
@@ -467,326 +724,6 @@ export function BoxProvider({ children }: BoxProviderProps) {
   const getGradeName = (grade: string) => grade
 
   /**
-   * Adds boxes to the room based on the current selection criteria.
-   * Validates input, updates the box state, and refreshes the UI.
-   * @throws {Error} If required fields are missing or if box addition fails.
-   */
-  const addBoxes = useCallback(() => {
-    const addBoxesAsync = async () => {
-      try {
-        if (!boxSize || !selectedCustomer || !selectedRow || !boxCount || !selectedVariety || !selectedGrade) {
-          setErrorMessage("Please fill in all required fields before adding boxes.")
-          return
-        }
-
-        console.log(`Adding boxes with stack height: ${stackHeight}`) // Debug log
-
-        // Check if the selected row is full
-        const selectedRowNumber = Number.parseInt(selectedRow)
-        const boxesInSelectedRow = boxes.filter((box) => box.row === selectedRowNumber)
-        const rowCapacity = columns * stackHeight
-
-        if (boxesInSelectedRow.length >= rowCapacity) {
-          // Find the next available row
-          const nextAvailableRow = availableRows.find((row) => row !== selectedRowNumber)
-
-          if (nextAvailableRow) {
-            toast({
-              title: "Row Full",
-              description: `Row ${selectedRowNumber} is full. Using Row ${nextAvailableRow} instead.`,
-              duration: 3000,
-            })
-
-            // Update the selected row
-            setSelectedRow(nextAvailableRow.toString())
-
-            // Give a moment for the state to update
-            await new Promise((resolve) => setTimeout(resolve, 100))
-          } else {
-            setErrorMessage("No available rows to add boxes. Please remove some boxes first.")
-            return
-          }
-        }
-
-        const customerName = getCustomerName(selectedCustomer)
-        const varietyName = getVarietyName(selectedVariety)
-        const gradeName = getGradeName(selectedGrade)
-
-        if (!customerName || !varietyName || !gradeName) {
-          setErrorMessage("Invalid selection data. Please check your selections.")
-          return
-        }
-
-        await addBoxesMagic(
-          boxSize,
-          customerName,
-          Number.parseInt(selectedRow),
-          Number.parseInt(boxCount),
-          varietyName,
-          gradeName,
-          loadingDate,
-          customerBoxColor,
-          rows,
-          columns,
-          levels,
-          stackHeight,
-        )
-
-        // Save the customer color preference
-        setCustomerColorPreferences((prev) => ({
-          ...prev,
-          [selectedCustomer]: customerBoxColor,
-        }))
-
-        setSelectedCustomer("")
-        setBoxCount("")
-        setSelectedRow(null)
-        setSelectedVariety("")
-        setSelectedGrade("")
-        setLoadingDate(new Date().toISOString().split("T")[0])
-        setCustomerBoxColor(UI_CONSTANTS.DEFAULT_BOX_COLOR)
-
-        updateAvailableRowsAndSelection()
-
-        toast({
-          title: "Success",
-          description: `Added boxes successfully.`,
-        })
-      } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Failed to add boxes. Please try again.")
-      }
-    }
-
-    addBoxesAsync()
-  }, [
-    boxSize,
-    selectedCustomer,
-    selectedRow,
-    boxCount,
-    selectedVariety,
-    selectedGrade,
-    loadingDate,
-    customerBoxColor,
-    rows,
-    columns,
-    levels,
-    stackHeight,
-    addBoxesMagic,
-    updateAvailableRowsAndSelection,
-    setErrorMessage,
-    boxes,
-    availableRows,
-    toast,
-    customerColorPreferences,
-    setCustomerColorPreferences,
-  ])
-
-  /**
-   * Removes boxes from the room based on the current selection criteria.
-   * Validates input, updates the box state, and refreshes the UI.
-   * @throws {Error} If required fields are missing or if box removal fails.
-   */
-  const removeBoxes = useCallback(() => {
-    try {
-      if (!selectedCustomer || !selectedVariety || !selectedGrade || !boxCount) {
-        setErrorMessage("Please select a customer, variety, grade, and enter a box count to remove.")
-        return
-      }
-
-      const customerName = getCustomerName(selectedCustomer)
-      const varietyName = getVarietyName(selectedVariety)
-      const gradeName = getGradeName(selectedGrade)
-
-      if (!customerName || !varietyName || !gradeName) {
-        setErrorMessage("Invalid selection data. Please check your selections.")
-        return
-      }
-
-      removeBoxesMagic(customerName, varietyName, gradeName, Number.parseInt(boxCount), boxSize, customerBoxColor)
-
-      updateAvailableRowsAndSelection()
-      setBoxCount("")
-
-      toast({
-        title: "Success",
-        description: `Removed boxes successfully using forklift-style removal.`,
-      })
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to remove boxes. Please try again.")
-    }
-  }, [
-    selectedCustomer,
-    selectedVariety,
-    selectedGrade,
-    boxCount,
-    boxSize,
-    customerBoxColor,
-    removeBoxesMagic,
-    updateAvailableRowsAndSelection,
-    setErrorMessage,
-  ])
-
-  /**
-   * Reapplies the last removed boxes to the room.
-   * Checks if the last action was a removal and if there are boxes to reapply.
-   * Updates the box state and refreshes the UI.
-   */
-  const reapplyLastRemoved = useCallback(() => {
-    if (log.length === 0) {
-      alert("No boxes to reapply.")
-      return
-    }
-
-    const lastEntry = log[log.length - 1]
-    if (lastEntry.boxCount >= 0) {
-      alert("The last action was not a removal. Cannot reapply.")
-      return
-    }
-
-    reapplyLastRemovedMagic(columns, rows)
-    updateAvailableRowsAndSelection()
-  }, [log, columns, rows, reapplyLastRemovedMagic, updateAvailableRowsAndSelection])
-
-  // Add these comments to the saveSnapshot function
-  /**
-   * Creates and saves a new snapshot of the current room state.
-   * Updates the snapshots state and logs the updated box data.
-   *
-   * TODO: Replace with API calls to PostgreSQL and S3/MinIO
-   * - Save snapshot metadata to PostgreSQL
-   * - Save snapshot JSON to S3/MinIO
-   *
-   * API endpoints to implement:
-   * - POST /api/snapshots - Save snapshot metadata
-   * - POST /api/storage/snapshots/{id} - Upload snapshot JSON
-   *
-   * @param {Snapshot} [customSnapshot] - Optional custom snapshot to save instead of creating a new one.
-   */
-  const saveSnapshot = useCallback(
-    (customSnapshot?: Snapshot) => {
-      const newSnapshot: Snapshot = customSnapshot || {
-        id: Date.now(),
-        name: `snapshot_${Date.now()}`,
-        timestamp: Date.now(),
-        boxes: [...boxes],
-      }
-
-      // Update the snapshots state
-      setSnapshots((prevSnapshots) => {
-        const updatedSnapshots = [...prevSnapshots, newSnapshot]
-
-        // Log the updated data
-        console.log("Snapshot saved:", {
-          id: newSnapshot.id,
-          boxCount: newSnapshot.boxes.length,
-          totalSnapshots: updatedSnapshots.length,
-          name: newSnapshot.name || "Unnamed Snapshot",
-        })
-
-        return updatedSnapshots
-      })
-
-      toast({
-        title: "Snapshot Saved",
-        description: `Saved snapshot ${newSnapshot.name ? `"${newSnapshot.name}"` : ""} with ${boxes.length} boxes at ${new Date().toLocaleString()}`,
-      })
-
-      return newSnapshot
-    },
-    [boxes],
-  )
-
-  /**
-   * Loads a previously saved snapshot, updating the current room state.
-   * Validates the snapshot data before applying it.
-   * @param {Snapshot} snapshot - The snapshot to load.
-   * @throws {Error} If the snapshot data is invalid or loading fails.
-   */
-  const loadSnapshot = useCallback(
-    (snapshot: Snapshot) => {
-      try {
-        if (!snapshot || !snapshot.boxes) {
-          throw new Error("Invalid snapshot data.")
-        }
-
-        setBoxes(snapshot.boxes)
-
-        const updatedBoxData = {
-          boxes: snapshot.boxes,
-          snapshots: snapshots,
-        }
-        console.log("Updated box data:", updatedBoxData)
-
-        toast({
-          title: "Success",
-          description: "Snapshot loaded successfully.",
-        })
-      } catch (error) {
-        handleError(error, "Failed to load snapshot. Please try again.")
-      }
-    },
-    [snapshots, setBoxes],
-  )
-
-  // Export all data
-  const exportData = () => {
-    try {
-      // Ensure arrays are initialized to prevent length errors
-      const dataToExport = {
-        boxes: boxes || [],
-        log: log || [],
-        snapshots: snapshots || [],
-      }
-
-      const dataStr = JSON.stringify(dataToExport, null, 2)
-      const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`
-
-      const exportFileDefaultName = `box_data_${new Date().toISOString()}.json`
-
-      const linkElement = document.createElement("a")
-      linkElement.setAttribute("href", dataUri)
-      linkElement.setAttribute("download", exportFileDefaultName)
-      linkElement.click()
-
-      addLogEntry({
-        action: "export_data",
-        timestamp: Date.now(),
-      })
-    } catch (error) {
-      console.error("Error exporting data:", error)
-      addLogEntry({
-        action: "export_error",
-        timestamp: Date.now(),
-        details: { error: String(error) },
-      })
-    }
-  }
-
-  // Import data
-  const importData = (data: any) => {
-    try {
-      if (data && typeof data === "object") {
-        // Ensure we have valid arrays
-        setBoxes(Array.isArray(data.boxes) ? data.boxes : [])
-        setLog(Array.isArray(data.log) ? data.log : [])
-        setSnapshots(Array.isArray(data.snapshots) ? data.snapshots : [])
-
-        addLogEntry({
-          action: "import_data",
-          timestamp: Date.now(),
-        })
-      }
-    } catch (error) {
-      console.error("Error importing data:", error)
-      addLogEntry({
-        action: "import_error",
-        timestamp: Date.now(),
-        details: { error: String(error) },
-      })
-    }
-  }
-
-  /**
    * Filters the boxes based on the provided criteria.
    * Updates the filteredBoxes state with the results.
    * @param {FilterCriteria} filters - The criteria to filter the boxes by.
@@ -812,14 +749,88 @@ export function BoxProvider({ children }: BoxProviderProps) {
     [boxes],
   )
 
+  // Update the highlightBox function to maintain backward compatibility
   const highlightBox = useCallback((row: number, column: number, level: number) => {
     setBoxes((prevBoxes) =>
-      prevBoxes.map((box) => ({
-        ...box,
-        highlighted: box.row === row && box.column === column && box.level === level,
-      })),
-    )
-  }, [])
+      prevBoxes.map((box) => {
+        // Check both new position format and legacy properties
+        const matchesNewFormat = box.position[0] === row && box.position[1] === column && box.position[2] === level;
+        const matchesLegacyFormat = box.row === row && box.column === column && box.level === level;
+        
+        return {
+          ...box,
+          highlighted: matchesNewFormat || matchesLegacyFormat,
+        };
+      }),
+    );
+  }, []);
+
+  // Update the reapplyLastRemoved function
+  const reapplyLastRemoved = useCallback(() => {
+    const lastRemoveEntry = log.findLast(entry => entry.action === 'remove');
+    if (lastRemoveEntry) {
+      const box = boxes.find(box => box.id === lastRemoveEntry.boxId);
+      if (box) {
+        addBox(box);
+      }
+    }
+  }, [log, boxes, addBox]);
+
+  // Update the exportData function
+  const exportData = () => {
+    try {
+      const dataToExport = {
+        boxes,
+        log,
+        snapshots
+      };
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
+      const exportFileDefaultName = `box_data_${new Date().toISOString()}.json`;
+
+      const linkElement = document.createElement("a");
+      linkElement.setAttribute("href", dataUri);
+      linkElement.setAttribute("download", exportFileDefaultName);
+      linkElement.click();
+
+      addLogEntry({
+        action: 'export',
+        boxId: '',
+        timestamp: Date.now(),
+        details: 'Data exported successfully',
+        customerName: selectedCustomer,
+        boxCount: boxes.length,
+        varietyName: selectedVariety,
+        grade: selectedGrade,
+        loadingDate,
+        locations: [],
+        boxSize,
+        color: customerBoxColor,
+        startingRow: selectedRow,
+        stackHeight,
+        customerBoxColor
+      });
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      addLogEntry({
+        action: 'export_error',
+        boxId: '',
+        timestamp: Date.now(),
+        details: `Error exporting data: ${String(error)}`,
+        customerName: selectedCustomer,
+        boxCount: boxes.length,
+        varietyName: selectedVariety,
+        grade: selectedGrade,
+        loadingDate,
+        locations: [],
+        boxSize,
+        color: customerBoxColor,
+        startingRow: selectedRow,
+        stackHeight,
+        customerBoxColor
+      });
+    }
+  };
 
   const value = useMemo(
     () => ({
@@ -887,6 +898,7 @@ export function BoxProvider({ children }: BoxProviderProps) {
       deleteSnapshot,
       importData,
       loadSnapshotById,
+      isFiltered,
     }),
     [
       rows,
@@ -929,6 +941,7 @@ export function BoxProvider({ children }: BoxProviderProps) {
       updateBox,
       clearBoxes,
       addLogEntry,
+      isFiltered,
     ],
   )
 
